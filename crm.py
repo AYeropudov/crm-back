@@ -1,4 +1,5 @@
 from flask import Flask
+from flask import request
 from flask import render_template
 from flask_pymongo import PyMongo
 from flask import jsonify
@@ -36,92 +37,143 @@ def get_scripts():
     return jsonify(resultList)
 
 
-@app.route('/scripts/<path:id>')
-def get_script_graph(id):
-    x = mongoClient.db.scripts.find_one({'_id': ObjectId(id)})
-    result = {}
-    for questtion in x['questions']:
-        res = []
-        tmpQuests = mongoClient.db.answersToQuestionRelations.find({'question': questtion})
-        for q in tmpQuests:
-            res.append({
-                'id': str(q['_id']),
-                'relQuestion': str(q['relQuestion']),
-                'answer': str(q["answer"])
-            })
-        result[str(questtion)] = res
-    questions = get_question_list(x['questions'])
-    answers = get_answer_dict()
-    relationsNodes = []
-    relationsEdges = [{
-            "from": "5982cd6b09531125704c8028",
-            "to": "598335de09531177d4d73cf1"
-        },
-        {
-            "from": "5982cd6b09531125704c8028",
-            "to": "598335de09531177d4d73cf2"
-        },
-        {
-            "from": "598335de09531177d4d73cf1",
-            "to": "5982cd6b09531125704c8029"
-        },
-        {
-            "from": "598335de09531177d4d73cf2",
-            "to": "5982cd6b09531125704c8031"
-        }]
-    for item in questions:
-        tmp = result[item['id']]
-        for rel in tmp:
-            #relationsEdges.append({"from": item['id'], "to": rel['id']})
-            #relationsEdges.append({"from": rel['id'], "to": rel['relQuestion']})
-            relationsNodes.append({"id": rel['id'], "label": answers[rel['answer']]})
-    graph = {}
-    # relationsEdges.append({"from": "598335de09531177d4d73cf1", "to": "5982cd6b09531125704c8029"})
-    # relationsEdges.append({"from": "598335de09531177d4d73cf2", "to": "5982cd6b09531125704c8031"})
-    graph['edges'] = relationsEdges
-    graph['nodes'] = []
-    graph['nodes'] += get_question_list(x['questions'])
-    graph['nodes'] += relationsNodes
-    # graph['nodes'] += get_answer_list()
+@app.route("/script/<path:id>")
+def get_script_by_id(id):
+    script = mongoClient.db.scripts.find_one({'_id': ObjectId(id)})
+    questions = get_question_list(script['questions'])
+    return jsonify({"title": script['title'], "content": questions})
 
-    return jsonify(graph)
+@app.route("/startscript/<path:id>")
+def start_script_by_id(id):
+    script = mongoClient.db.scripts.find_one({'_id': ObjectId(id)})
+    question = mongoClient.db.questions.find_one({"_id": script['questions'][0]})
+    answers = mongoClient.db.answersToQuestionRelations.find({"question": question['_id']})
+    answersList=[]
+    for answer in answers:
+        answersList.append({'text':get_title_answer(answer['answer']), 'next': str(answer['relQuestion'])})
+    return jsonify({"title": script['title'], "key":str(question["_id"]),"text": question['text'], "answers": answersList})
+
+@app.route('/question/<path:id>')
+def get_next_question(id):
+    question = mongoClient.db.questions.find_one({"_id": ObjectId(id)})
+    answers = mongoClient.db.answersToQuestionRelations.find({"question": question['_id']})
+    answersList = []
+    for answer in answers:
+        answersList.append({'text': get_title_answer(answer['answer']), 'next': str(answer['relQuestion'])})
+    return jsonify({"key":str(question["_id"]), "text": question['text'], "answers": answersList})
+
+def get_childrens_list_for_question(question):
+    result = []
+    childrens = mongoClient.db.answersRelations.find({"question": question})
+    for children in childrens:
+        for answer in children['answers']:
+            result.append({"title": get_title_answer(answer), "children":[]})
+    return result
+
+def get_title_answer(id):
+    answer = mongoClient.db.answers.find_one({"_id": id})
+    if answer is not None:
+        return answer['text']
+
 
 def get_question_list(oids):
     res = []
     for item in oids:
         tmpQuestion = mongoClient.db.questions.find_one({"_id": item})
-        res.append({"id": str(tmpQuestion['_id']), "label": tmpQuestion['text']})
+        res.append({"id": str(tmpQuestion['_id']), "title": tmpQuestion['text'], "children": get_childrens_list_for_question(tmpQuestion['_id'])})
     return res
 
-def get_question_dict(oids):
-    res = {}
-    for item in oids:
-        tmpQuestion = mongoClient.db.questions.find_one({"_id": item})
-        res[str(tmpQuestion['_id'])] = tmpQuestion['text']
-    return res
 
-def get_answer_list():
-    answers = mongoClient.db.answers.find({})
-    a = []
-    for answer in answers:
-        a.append({'id': str(answer['_id']), 'label': answer['text']})
-    return a
+@app.route('/markroot', methods=['POST'])
+def mark_node_as_root():
+    return jsonify(request.get_json())
 
-def get_answer_dict():
-    answers = mongoClient.db.answers.find({})
-    a = {}
-    for answer in answers:
-        a[str(answer['_id'])] = answer['text']
-    return a
+# @app.route('/scripts/<path:id>')
+# def get_script_graph(id):
+#     x = mongoClient.db.scripts.find_one({'_id': ObjectId(id)})
+#     result = {}
+#     for questtion in x['questions']:
+#         res = []
+#         tmpQuests = mongoClient.db.answersToQuestionRelations.find({'question': questtion})
+#         for q in tmpQuests:
+#             res.append({
+#                 'id': str(q['_id']),
+#                 'relQuestion': str(q['relQuestion']),
+#                 'answer': str(q["answer"])
+#             })
+#         result[str(questtion)] = res
+#     questions = get_question_list(x['questions'])
+#     answers = get_answer_dict()
+#     relationsNodes = []
+#     relationsEdges = [{
+#             "from": "5982cd6b09531125704c8028",
+#             "to": "598335de09531177d4d73cf1"
+#         },
+#         {
+#             "from": "5982cd6b09531125704c8028",
+#             "to": "598335de09531177d4d73cf2"
+#         },
+#         {
+#             "from": "598335de09531177d4d73cf1",
+#             "to": "5982cd6b09531125704c8029"
+#         },
+#         {
+#             "from": "598335de09531177d4d73cf2",
+#             "to": "5982cd6b09531125704c8031"
+#         }]
+#     for item in questions:
+#         tmp = result[item['id']]
+#         for rel in tmp:
+#             #relationsEdges.append({"from": item['id'], "to": rel['id']})
+#             #relationsEdges.append({"from": rel['id'], "to": rel['relQuestion']})
+#             relationsNodes.append({"id": rel['id'], "label": answers[rel['answer']]})
+#     graph = {}
+#     # relationsEdges.append({"from": "598335de09531177d4d73cf1", "to": "5982cd6b09531125704c8029"})
+#     # relationsEdges.append({"from": "598335de09531177d4d73cf2", "to": "5982cd6b09531125704c8031"})
+#     graph['edges'] = relationsEdges
+#     graph['nodes'] = []
+#     graph['nodes'] += get_question_list(x['questions'])
+#     graph['nodes'] += relationsNodes
+#     # graph['nodes'] += get_answer_list()
+#
+#     return jsonify(graph)
+
+# def get_question_list(oids):
+#     res = []
+#     for item in oids:
+#         tmpQuestion = mongoClient.db.questions.find_one({"_id": item})
+#         res.append({"id": str(tmpQuestion['_id']), "label": tmpQuestion['text']})
+#     return res
+#
+# def get_question_dict(oids):
+#     res = {}
+#     for item in oids:
+#         tmpQuestion = mongoClient.db.questions.find_one({"_id": item})
+#         res[str(tmpQuestion['_id'])] = tmpQuestion['text']
+#     return res
+#
+# def get_answer_list():
+#     answers = mongoClient.db.answers.find({})
+#     a = []
+#     for answer in answers:
+#         a.append({'id': str(answer['_id']), 'label': answer['text']})
+#     return a
+#
+# def get_answer_dict():
+#     answers = mongoClient.db.answers.find({})
+#     a = {}
+#     for answer in answers:
+#         a[str(answer['_id'])] = answer['text']
+#     return a
 
 
-@app.route('/answers')
-def get_answers():
-    answers = mongoClient.db.answers.find({})
-    a = []
-    for answer in answers:
-        a.append({'id': str(answer['_id']), 'label': answer['text']})
-    return jsonify(a)
+# @app.route('/answers')
+# def get_answers():
+#     answers = mongoClient.db.answers.find({})
+#     a = []
+#     for answer in answers:
+#         a.append({'id': str(answer['_id']), 'label': answer['text']})
+#     return jsonify(a)
 """
 @app.route('/putanswers')
 def put_answers_to_db():
@@ -139,8 +191,7 @@ def put_questions_to_db():
         new_json = {'text': question[0], 'type': 'question'}
         mongoClient.db.questions.insert_one(new_json)
     return 'Inserted'
-
-
+    
 @app.route('/relations')
 def make_relations_q_to_answ():
     questionList = parser.collect_q()
@@ -152,9 +203,8 @@ def make_relations_q_to_answ():
         for answer in relatedAnswers:
             answerInDb = mongoClient.db.answers.find_one({'text': answer})
             retrived.append(answerInDb['_id'])
-        mongoClient.db.answersRelations.insert_one({"question": questionInDb['_id'], "answers": retrived})
+        t = mongoClient.db.answersRelations.insert_one({"question": questionInDb['_id'], "answers": retrived})
     return "Inserted"
-
 
 @app.route('/relationsa')
 def make_relations_q_to_quest_from_answers():

@@ -7,7 +7,7 @@ isset = True
 
 
 def collect_q():
-    for x in range(1, 100):
+    for x in range(1, 300):
         question = getattr(questions, "q{}".format(x), None)
         if question is None:
             break
