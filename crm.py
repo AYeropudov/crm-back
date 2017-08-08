@@ -1,11 +1,12 @@
 from flask import Flask
 from flask import request
-from flask import render_template
+#from flask import render_template
 from flask_pymongo import PyMongo
 from flask import jsonify
 from bson.objectid import ObjectId
-from bson import json_util
-from Scripts import parser
+#from bson import json_util
+#from Scripts import parser
+
 from flask_cors import CORS, cross_origin
 
 app = Flask(__name__, static_url_path='/static')
@@ -17,50 +18,47 @@ app.config['MONGO_PORT'] = 27017
 
 mongoClient = PyMongo(app)
 
+from Classes import Script, ScriptsList, Question
 
 @app.route('/')
 def hello_world():
-    return render_template("index.html")
+    return "ok"
 
 
-@app.route('/<path:path>')
-def static_file(path):
-    return app.send_static_file(path)
-
-
+# Получить список всех скриптов
 @app.route('/scripts')
 def get_scripts():
-    scriptsList = mongoClient.db.scripts.find({})
-    resultList = []
-    for script in scriptsList:
-        resultList.append({'id': str(script['_id']), 'title': script['title'], 'countQuestions': len(script['questions'])})
-    return jsonify(resultList)
+    result = ScriptsList.scripts_list()
+    return jsonify(result.scripts)
 
-
+# Получить содержимое скрипта по ID
 @app.route("/script/<path:id>")
 def get_script_by_id(id):
-    script = mongoClient.db.scripts.find_one({'_id': ObjectId(id)})
-    questions = get_question_list(script['questions'])
-    return jsonify({"title": script['title'], "content": questions})
+    result = Script.script(id)
+    return jsonify(result.__dict__)
+
 
 @app.route("/startscript/<path:id>")
 def start_script_by_id(id):
-    script = mongoClient.db.scripts.find_one({'_id': ObjectId(id)})
-    question = mongoClient.db.questions.find_one({"_id": script['questions'][0]})
-    answers = mongoClient.db.answersToQuestionRelations.find({"question": question['_id']})
-    answersList=[]
-    for answer in answers:
-        answersList.append({'text':get_title_answer(answer['answer']), 'next': str(answer['relQuestion'])})
-    return jsonify({"title": script['title'], "key":str(question["_id"]),"text": question['text'], "answers": answersList})
+    script =Script.script(id)
+    attempt = script.start()
+    firstQuestion = Question.question(script.questions[0])
+    return jsonify({})
+    #script = mongoClient.db.scripts.find_one({'_id': ObjectId(id)})
+    #question = mongoClient.db.questions.find_one({"_id": script['questions'][0]})
+    #answers = mongoClient.db.answersToQuestionRelations.find({"question": question['_id']})
+    #answersList=[]
+    #for answer in answers:
+    #    answersList.append({'text':get_title_answer(answer['answer']), 'next': str(answer['relQuestion'])})
+    #return jsonify({"title": script['title'], "key":str(question["_id"]),"text": question['text'], "answers": answersList})
+    pass
 
+
+# получить вопрос по ID с содержимым (ИД, Вопрос, ответы)
 @app.route('/question/<path:id>')
 def get_next_question(id):
-    question = mongoClient.db.questions.find_one({"_id": ObjectId(id)})
-    answers = mongoClient.db.answersToQuestionRelations.find({"question": question['_id']})
-    answersList = []
-    for answer in answers:
-        answersList.append({'text': get_title_answer(answer['answer']), 'next': str(answer['relQuestion'])})
-    return jsonify({"key":str(question["_id"]), "text": question['text'], "answers": answersList})
+    result = Question.question(id)
+    return jsonify(result.__dict__)
 
 def get_childrens_list_for_question(question):
     result = []
