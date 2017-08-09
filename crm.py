@@ -18,7 +18,7 @@ app.config['MONGO_PORT'] = 27017
 
 mongoClient = PyMongo(app)
 
-from Classes import Script, ScriptsList, Question
+from Classes import Script, ScriptsList, Question, ScriptAttempt
 
 @app.route('/')
 def hello_world():
@@ -31,6 +31,7 @@ def get_scripts():
     result = ScriptsList.scripts_list()
     return jsonify(result.scripts)
 
+
 # Получить содержимое скрипта по ID
 @app.route("/script/<path:id>")
 def get_script_by_id(id):
@@ -38,27 +39,27 @@ def get_script_by_id(id):
     return jsonify(result.__dict__)
 
 
+#запуск опроса
 @app.route("/startscript/<path:id>")
 def start_script_by_id(id):
     script =Script.script(id)
     attempt = script.start()
-    firstQuestion = Question.question(script.questions[0])
-    return jsonify({})
-    #script = mongoClient.db.scripts.find_one({'_id': ObjectId(id)})
-    #question = mongoClient.db.questions.find_one({"_id": script['questions'][0]})
-    #answers = mongoClient.db.answersToQuestionRelations.find({"question": question['_id']})
-    #answersList=[]
-    #for answer in answers:
-    #    answersList.append({'text':get_title_answer(answer['answer']), 'next': str(answer['relQuestion'])})
-    #return jsonify({"title": script['title'], "key":str(question["_id"]),"text": question['text'], "answers": answersList})
-    pass
+    first_question = Question.question(script.questions[0])
+    result = first_question.__dict__
+    result["title"]= script.title
+    result["attempt"] = attempt.id
+    return jsonify(result)
 
 
 # получить вопрос по ID с содержимым (ИД, Вопрос, ответы)
-@app.route('/question/<path:id>')
-def get_next_question(id):
+@app.route('/question/<path:id>/<path:attempt>')
+def get_next_question(id, attempt):
     result = Question.question(id)
+
+    if len(result.answers) == 0 :
+        ScriptAttempt.Attempt.complete(id=attempt)
     return jsonify(result.__dict__)
+
 
 def get_childrens_list_for_question(question):
     result = []
