@@ -18,7 +18,7 @@ app.config['MONGO_PORT'] = 27017
 
 mongoClient = PyMongo(app)
 
-from Classes import Script, ScriptsList, Question, ScriptAttempt, Client, ClientsDb
+from Classes import Script, ScriptsList, Question, ScriptAttempt, Client, ClientsDb, Answer, AttemptsResult
 
 @app.route('/')
 def hello_world():
@@ -62,7 +62,9 @@ def start_script_by_id(id):
 # получить вопрос по ID с содержимым (ИД, Вопрос, ответы)
 @app.route('/question/<path:attempt>/<path:answer>/<path:id>')
 def get_next_question(id, answer, attempt):
-
+    answer_entry = Answer.answer(id=answer)
+    attempt_entry = ScriptAttempt.Attempt(id=attempt)
+    history = AttemptsResult.AttemptsResult(answer_entry, attempt_entry)
     result = Question.question(id)
     if len(result.answers) == 0 :
         ScriptAttempt.Attempt.complete(id=attempt)
