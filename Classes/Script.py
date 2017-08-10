@@ -12,6 +12,6 @@ class script:
             self.title = result['title']
             self.questions = [str(item) for item in result['questions']]
 
-    def start(self):
-        new_script_attempt = Attempt(self, "test")
+    def start(self, client):
+        new_script_attempt = Attempt(self, client.id)
         return new_script_attempt

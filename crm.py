@@ -18,7 +18,7 @@ app.config['MONGO_PORT'] = 27017
 
 mongoClient = PyMongo(app)
 
-from Classes import Script, ScriptsList, Question, ScriptAttempt
+from Classes import Script, ScriptsList, Question, ScriptAttempt, Client, ClientsDb
 
 @app.route('/')
 def hello_world():
@@ -38,24 +38,32 @@ def get_script_by_id(id):
     result = Script.script(id)
     return jsonify(result.__dict__)
 
+@app.route('/createattempt', methods=["POST"])
+def start_attempt():
+    post = request.get_json()
+    client_db = ClientsDb.ClientsDb()
+    script = Script.script(post['script_id'])
+    client = client_db.get_client_by_id(post['client_id'])
+    attempt = script.start(client=client)
+    return jsonify(attempt.__dict__), 202
 
 #запуск опроса
 @app.route("/startscript/<path:id>")
 def start_script_by_id(id):
-    script =Script.script(id)
-    attempt = script.start()
-    first_question = Question.question(script.questions[0])
+    attempt = ScriptAttempt.Attempt(id=id)
+    first_question = Question.question(attempt.script.questions[0])
     result = first_question.__dict__
-    result["title"]= script.title
+    result["title"]= attempt.script.title
+    result["client"] = attempt.client.title
     result["attempt"] = attempt.id
     return jsonify(result)
 
 
 # получить вопрос по ID с содержимым (ИД, Вопрос, ответы)
-@app.route('/question/<path:id>/<path:attempt>')
-def get_next_question(id, attempt):
-    result = Question.question(id)
+@app.route('/question/<path:attempt>/<path:answer>/<path:id>')
+def get_next_question(id, answer, attempt):
 
+    result = Question.question(id)
     if len(result.answers) == 0 :
         ScriptAttempt.Attempt.complete(id=attempt)
     return jsonify(result.__dict__)
@@ -82,6 +90,21 @@ def get_question_list(oids):
         res.append({"id": str(tmpQuestion['_id']), "title": tmpQuestion['text'], "children": get_childrens_list_for_question(tmpQuestion['_id'])})
     return res
 
+@app.route('/getclientslist')
+def get_cleints_list():
+    clients_database = ClientsDb.ClientsDb();
+    result = clients_database.get_all()
+    return jsonify([item.__dict__ for item in result])
+
+@app.route('/addclient', methods=['POST'])
+def add_new_client():
+    new_client = Client.Client()
+    new_client.fill_from_dict(request.get_json())
+    clients_database = ClientsDb.ClientsDb();
+    clients_database.addNew(new_client)
+    new_client.id = str(new_client._id)
+    del new_client._id
+    return jsonify(new_client.__dict__), 202
 
 @app.route('/markroot', methods=['POST'])
 def mark_node_as_root():
