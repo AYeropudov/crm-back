@@ -2,15 +2,13 @@ from Dicts import db_adapter
 
 
 class Simple:
-    def __init__(self, data, code):
-        self.__code = "dict" + code
+    def __init__(self, data):
         if isinstance(data, dict):
             self.make_single(data)
 
     def make_single(self, data):
-        for key in data.keys():
-            self[key] = data[key]
+        self.__dict__= data
 
-    def save_single(self):
-        result = db_adapter.db[self.__code].insert_one(self.__dict__)
+    def save(self, code):
+        result = db_adapter.db["dict_"+code].insert_one(self.__dict__)
         return result.inserted_id

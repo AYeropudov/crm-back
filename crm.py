@@ -3,7 +3,7 @@ from flask import request
 from flask_pymongo import PyMongo
 from flask import jsonify
 from bson.objectid import ObjectId
-
+import importlib
 
 from flask_cors import CORS, cross_origin
 
@@ -14,11 +14,12 @@ app.config['MONGO_DBNAME'] = 'crm'
 app.config['MONGO_HOST'] = 'localhost'
 app.config['MONGO_PORT'] = 27017
 
-mongoClient = PyMongo(app)
+mongo_client = PyMongo(app)
 
 
 from Classes import Script, ScriptsList, Question, ScriptAttempt, Client, ClientsDb, Answer, AttemptsResult
-from Dicts import *
+import Dicts
+
 
 @app.route('/')
 def hello_world():
@@ -75,7 +76,7 @@ def get_next_question(id, answer, attempt):
 
 def get_childrens_list_for_question(question):
     result = []
-    childrens = mongoClient.db.answersRelations.find({"question": question})
+    childrens = mongo_client.db.answersRelations.find({"question": question})
     for children in childrens:
         for answer in children['answers']:
             result.append({"title": get_title_answer(answer), "children":[]})
@@ -83,7 +84,7 @@ def get_childrens_list_for_question(question):
 
 
 def get_title_answer(id):
-    answer = mongoClient.db.answers.find_one({"_id": id})
+    answer = mongo_client.db.answers.find_one({"_id": id})
     if answer is not None:
         return answer['text']
 
@@ -91,7 +92,7 @@ def get_title_answer(id):
 def get_question_list(oids):
     res = []
     for item in oids:
-        tmpQuestion = mongoClient.db.questions.find_one({"_id": item})
+        tmpQuestion = mongo_client.db.questions.find_one({"_id": item})
         res.append({"id": str(tmpQuestion['_id']), "title": tmpQuestion['text'], "children": get_childrens_list_for_question(tmpQuestion['_id'])})
     return res
 
@@ -124,7 +125,19 @@ def dictionaries():
     if request.method == 'POST':
         postData = request.get_json()
         data = postData['dict']
-        code = postData['code']
+        code = str(postData['code'])
+        type = str(postData['type'])
+        return jsonify(process_dicts(data, code, type))
+
+
+def process_dicts(data, code, type):
+    dict_module = importlib.import_module("Dicts."+type)
+    dict_class = getattr(dict_module,type.title())
+    instance = dict_class(data)
+    result = instance.save(code)
+    if isinstance(result, list):
+        return [str(itm) for itm in result]
+    return [str(result)]
 
 if __name__ == '__main__':
     app.run()

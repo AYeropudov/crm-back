@@ -1,3 +1,3 @@
-from crm import mongoClient
+from crm import mongo_client
 
-db_adapter = mongoClient
+db_adapter = mongo_client

@@ -1,7 +1,7 @@
 import datetime
 
 from Classes import ClientsDb, Script
-from crm import mongoClient
+from crm import mongo_client
 from bson.objectid import ObjectId
 
 class Attempt():
@@ -15,7 +15,7 @@ class Attempt():
             self.timeEnd = None
             self.completed = False
 
-            tmp = mongoClient.db.scriptsAttempts.insert_one(self.__dict__).inserted_id
+            tmp = mongo_client.db.scriptsAttempts.insert_one(self.__dict__).inserted_id
             if tmp is not None:
                 self.id = str(tmp)
                 self.script = str(self.script)
@@ -23,10 +23,10 @@ class Attempt():
                 del self._id
 
     def complete(id):
-        mongoClient.db.scriptsAttempts.update_one({"_id": ObjectId(id)}, {"$set":{"completed": True, "timeEnd": datetime.datetime.utcnow()}})
+        mongo_client.db.scriptsAttempts.update_one({"_id": ObjectId(id)}, {"$set":{"completed": True, "timeEnd": datetime.datetime.utcnow()}})
 
     def start_by_id(self, id):
-        result = mongoClient.db.scriptsAttempts.find_one({"_id": ObjectId(id)})
+        result = mongo_client.db.scriptsAttempts.find_one({"_id": ObjectId(id)})
         if result is not None:
             client_db = ClientsDb.ClientsDb()
             self.id = str(result['_id'])
