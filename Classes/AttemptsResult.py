@@ -9,4 +9,4 @@ class AttemptsResult:
         self.created_at = datetime.datetime.utcnow()
         self.attempt = ObjectId(attempt.id)
         self.client = attempt.client.id
-        tmp = mongo_client.db.attemptsHostory.insert_one(self.__dict__).inserted_id
+        tmp = mongo_client.db.attemptsHistory.insert_one(self.__dict__).inserted_id
