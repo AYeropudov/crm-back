@@ -26,6 +26,7 @@ mongo_client = PyMongo(app)
 from Classes import Script, ScriptsList, Question, ScriptAttempt, Client, ClientsDb, Answer, AttemptsResult
 from References.references import References
 from References.base_reference import BaseReference
+from References.references_types import ReferencesTypes
 
 
 
@@ -139,7 +140,8 @@ def references():
         return jsonify({"result": new_ref.save_reference_to_db})
     if request.method == 'GET':
         refs_collection = References()
-        return  jsonify(prepare_jsonify(dict(refs_collection.fill_collection().collection)))
+        refs_types = ReferencesTypes()
+        return  jsonify(references = prepare_jsonify(dict(refs_collection.fill_collection().collection)), types = list(prepare_jsonify(refs_types.get_types_from_db().collection)))
 
 
 @app.route('/references/<string:ref_id>', methods=['PUT', 'DELETE'])
@@ -153,8 +155,7 @@ def modify_references(ref_id):
         request.json['_id'] = ref_id
         ref.from_json(request.json)
         result = ref.update_reference_in_db
-
-        return jsonify({result = result), 200 if result else 404
+        return jsonify(result = result), 200 if result is True else 404
     if request.method == 'DELETE':
         ref = BaseReference()
         ref.from_json({"_id":ref_id})

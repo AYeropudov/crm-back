@@ -2,7 +2,7 @@ from bson import ObjectId
 from crm import mongo_client
 
 class BaseReference:
-    __slots__ = ['code','type', 'value', '_id', 'title']
+    __slots__ = ['code','type', 'value', '_id', 'title', 'external_id']
 
     def __init__(self):
         self.type = None

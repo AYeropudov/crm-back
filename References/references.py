@@ -14,4 +14,3 @@ class References:
         for ref in self.get_collections_from_db():
             self.collection[ref['code']].append(ref)
         return self
-
