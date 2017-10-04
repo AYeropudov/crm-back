@@ -9,6 +9,7 @@ from flask_cors import CORS, cross_origin
 
 
 
+
 class ObjectIdEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, ObjectId):
@@ -27,7 +28,7 @@ from Classes import Script, ScriptsList, Question, ScriptAttempt, Client, Client
 from References.references import References
 from References.base_reference import BaseReference
 from References.references_types import ReferencesTypes
-
+from References.reference_type import ReferenceType
 
 @app.route('/')
 def hello_world():
@@ -158,6 +159,25 @@ def modify_references(ref_id):
         ref = BaseReference()
         ref.from_json({"_id":ref_id})
         return jsonify({"result": ref.remove_reference_from_db})
+
+@app.route('/references-types', methods=['POST'])
+def add_references_type():
+    postData = request.get_json()
+    new_ref_type = ReferenceType()
+    new_ref_type.from_json(postData)
+    return jsonify({'result': new_ref_type.save_ref_type_to_db})
+
+@app.route('/references-types/<string:ref_id>', methods=['PUT'])
+def put_references_type(ref_id):
+    try:
+        ObjectId(ref_id)
+    except InvalidId:
+        return jsonify(message="Not valid ID"), 404
+    postData = request.get_json()
+    new_ref_type = ReferenceType()
+    new_ref_type.from_json(postData)
+    result = new_ref_type.update_reference_in_db
+    return jsonify(result=result), 200 if result is True else 404
 
 
 # def process_dicts(data, code, type):
