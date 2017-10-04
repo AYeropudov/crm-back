@@ -29,8 +29,6 @@ from References.base_reference import BaseReference
 from References.references_types import ReferencesTypes
 
 
-
-
 @app.route('/')
 def hello_world():
     return "ok"

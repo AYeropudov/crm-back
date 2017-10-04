@@ -10,6 +10,7 @@ class BaseReference:
         self._id = None
         self.code = None
         self.title = None
+        self.external_id = None
 
     def from_json(self, json_data):
         for key, value in json_data.items():
